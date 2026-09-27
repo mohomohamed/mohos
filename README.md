@@ -2,6 +2,8 @@
 
 **DisplayMenu** is a lightweight, high-performance macOS menu bar utility for quickly switching display resolutions and HiDPI/LoDPI scaling modes.
 
+Created & Developed by **Mohamed Moho**.
+
 Powered by [`displayplacer`](https://github.com/jresh/displayplacer) as its native backend.
 
 ---
@@ -48,3 +50,9 @@ DisplayMenu/
 ├── build.sh           # Build, package, code-sign, install, and launch script
 └── README.md          # Documentation
 ```
+
+---
+
+## 👤 Author
+
+Developed by **Mohamed Moho**.

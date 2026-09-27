@@ -1,3 +1,11 @@
+//
+//  main.swift
+//  DisplayMenu
+//
+//  Created & Developed by Mohamed Moho
+//  Copyright © 2026 Mohamed Moho. All rights reserved.
+//
+
 import AppKit
 import Foundation
 
@@ -323,6 +331,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = "DisplayMenu"
         alert.informativeText = """
+        Created & Developed by Mohamed Moho
+
         Lightweight resolution menu bar app for macOS.
 
         Backend: displayplacer (\(displayplacerPath))

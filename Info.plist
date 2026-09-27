@@ -12,6 +12,8 @@
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0.0</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 Mohamed Moho. All rights reserved.</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>
