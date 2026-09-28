@@ -35,9 +35,9 @@ elif [ -f "/opt/homebrew/bin/displayplacer" ]; then
     chmod +x "$BUILD_DIR/$APP_NAME/Contents/Resources/Tools/displayplacer"
 fi
 
-# Code sign ad-hoc
+# Code sign ad-hoc with consistent identifier
 echo "Code signing app bundle..."
-codesign --force --deep -s - "$BUILD_DIR/$APP_NAME"
+codesign --force --deep --identifier com.moho.mohos -s - "$BUILD_DIR/$APP_NAME"
 
 # Install to ~/Applications
 echo "Installing to $INSTALL_DIR/$APP_NAME..."

@@ -53,6 +53,7 @@ public final class PermissionManager {
     
     public func openAccessibilitySettings() {
         startPermissionPollingIfNeeded()
+        _ = checkAndPromptAccessibility(promptIfNeeded: true)
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
         } else if let url = URL(string: "https://support.apple.com/guide/mac-help/allow-accessibility-apps-to-access-your-mac-mh43185/mac") {
