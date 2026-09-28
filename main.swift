@@ -24,10 +24,94 @@ struct DisplayInfo {
     let modes: [DisplayMode]
 }
 
+class ResolutionSliderView: NSView {
+    let titleLabel: NSTextField
+    let slider: NSSlider
+    let resLabel: NSTextField
+    let modes: [DisplayMode]
+    let screenId: String
+    weak var delegate: AppDelegate?
+
+    init(frame: NSRect, display: DisplayInfo, modes: [DisplayMode], delegate: AppDelegate) {
+        self.modes = modes
+        self.screenId = display.screenId
+        self.delegate = delegate
+        
+        self.titleLabel = NSTextField(labelWithString: "📺 \(display.name)")
+        self.titleLabel.font = NSFont.boldSystemFont(ofSize: 12)
+
+        let maxVal = Double(max(0, modes.count - 1))
+        self.slider = NSSlider(value: 0, minValue: 0, maxValue: maxVal, target: nil, action: nil)
+        self.slider.numberOfTickMarks = max(2, modes.count)
+        self.slider.allowsTickMarkValuesOnly = true
+        self.slider.isContinuous = true
+        
+        let currentIdx = modes.firstIndex(where: { $0.isCurrent }) ?? 0
+        self.slider.integerValue = currentIdx
+        
+        self.resLabel = NSTextField(labelWithString: "")
+        self.resLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        self.resLabel.alignment = .center
+        
+        super.init(frame: frame)
+        
+        titleLabel.frame = NSRect(x: 16, y: frame.height - 24, width: frame.width - 32, height: 18)
+        slider.frame = NSRect(x: 16, y: 30, width: frame.width - 32, height: 22)
+        resLabel.frame = NSRect(x: 16, y: 8, width: frame.width - 32, height: 16)
+        
+        addSubview(titleLabel)
+        addSubview(slider)
+        addSubview(resLabel)
+        
+        slider.target = self
+        slider.action = #selector(sliderChanged(_:))
+        
+        updateLabel(for: currentIdx)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func updateLabel(for index: Int) {
+        guard index >= 0 && index < modes.count else { return }
+        let m = modes[index]
+        let currentTag = m.isCurrent ? " (Current)" : ""
+        resLabel.stringValue = "\(m.width) × \(m.height) (\(m.isScaled ? "HiDPI" : "LoDPI"))\(currentTag)"
+    }
+
+    @objc func sliderChanged(_ sender: NSSlider) {
+        let idx = sender.integerValue
+        updateLabel(for: idx)
+        
+        if let event = NSApp.currentEvent, event.type == .leftMouseUp {
+            guard idx >= 0 && idx < modes.count else { return }
+            let mode = modes[idx]
+            if !mode.isCurrent {
+                delegate?.applyMode(screenId: screenId, modeId: mode.modeId)
+            }
+        }
+    }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     var menu: NSMenu!
     var displayplacerPath: String = ""
+
+    // User preferences
+    var isSliderViewEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "UseSliderView") }
+        set { UserDefaults.standard.set(newValue, forKey: "UseSliderView"); refreshMenu() }
+    }
+
+    var isHiDPIEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "ShowHiDPI") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "ShowHiDPI"); refreshMenu() }
+    }
+
+    var isLoDPIEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "ShowLoDPI") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "ShowLoDPI"); refreshMenu() }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Find displayplacer executable path
@@ -154,13 +238,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let isCurrent = line.contains("<-- current mode")
         let isScaled = line.contains("scaling:on")
         
-        // Extract mode id
         guard let modeRange = line.range(of: "mode ") else { return nil }
         let afterMode = line[modeRange.upperBound...]
         guard let colonIdx = afterMode.firstIndex(of: ":") else { return nil }
         guard let modeId = Int(afterMode[..<colonIdx].trimmingCharacters(in: .whitespaces)) else { return nil }
         
-        // Extract res:WxH
         guard let resRange = line.range(of: "res:") else { return nil }
         let afterRes = line[resRange.upperBound...]
         let resParts = afterRes.components(separatedBy: .whitespaces)
@@ -168,7 +250,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let dimensions = resString.components(separatedBy: "x")
         guard dimensions.count == 2, let width = Int(dimensions[0]), let height = Int(dimensions[1]) else { return nil }
         
-        // Extract color depth
         var colorDepth = 8
         if let cdRange = line.range(of: "color_depth:") {
             let afterCd = line[cdRange.upperBound...]
@@ -207,21 +288,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     menu.addItem(NSMenuItem.separator())
                 }
                 
-                let titleItem = NSMenuItem(title: "📺 \(display.name)", action: nil, keyEquivalent: "")
-                titleItem.isEnabled = false
-                menu.addItem(titleItem)
-                
-                // Filter modes to 8-bit depth (or highest) to avoid clutter
+                // Preferred modes filter (8-bit or current)
                 let preferredModes = display.modes.filter { $0.colorDepth == 8 || $0.isCurrent }
                 let modesToShow = preferredModes.isEmpty ? display.modes : preferredModes
                 
                 // Sort modes by resolution descending
                 let sortedModes = modesToShow.sorted { ($0.width * $0.height) > ($1.width * $1.height) }
                 
-                // Deduplicate identical width, height, and scaled status (keep current mode or first)
+                // Deduplicate & apply preferences filter
                 var seen = Set<String>()
                 var uniqueModes: [DisplayMode] = []
                 for m in sortedModes {
+                    if m.isScaled && !isHiDPIEnabled && !m.isCurrent { continue }
+                    if !m.isScaled && !isLoDPIEnabled && !m.isCurrent { continue }
+                    
                     let key = "\(m.width)x\(m.height)_\(m.isScaled)"
                     if m.isCurrent || !seen.contains(key) {
                         seen.insert(key)
@@ -229,36 +309,55 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     }
                 }
                 
-                let hiDpiModes = uniqueModes.filter { $0.isScaled }
-                let loDpiModes = uniqueModes.filter { !$0.isScaled }
-                
-                if !hiDpiModes.isEmpty {
-                    for mode in hiDpiModes {
-                        let title = "    \(mode.width) × \(mode.height) (HiDPI)"
-                        let item = NSMenuItem(title: title, action: #selector(selectMode(_:)), keyEquivalent: "")
-                        item.target = self
-                        item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
-                        if mode.isCurrent {
-                            item.state = .on
+                if isSliderViewEnabled {
+                    // Slider View Mode: lower resolution at index 0 (left), higher resolution at max index (right)
+                    let sliderModes = Array(uniqueModes.reversed())
+                    let sliderView = ResolutionSliderView(
+                        frame: NSRect(x: 0, y: 0, width: 270, height: 78),
+                        display: display,
+                        modes: sliderModes,
+                        delegate: self
+                    )
+                    let sliderMenuItem = NSMenuItem()
+                    sliderMenuItem.view = sliderView
+                    menu.addItem(sliderMenuItem)
+                } else {
+                    // List View Mode
+                    let titleItem = NSMenuItem(title: "📺 \(display.name)", action: nil, keyEquivalent: "")
+                    titleItem.isEnabled = false
+                    menu.addItem(titleItem)
+
+                    let hiDpiModes = uniqueModes.filter { $0.isScaled }
+                    let loDpiModes = uniqueModes.filter { !$0.isScaled }
+                    
+                    if !hiDpiModes.isEmpty {
+                        for mode in hiDpiModes {
+                            let title = "    \(mode.width) × \(mode.height) (HiDPI)"
+                            let item = NSMenuItem(title: title, action: #selector(selectMode(_:)), keyEquivalent: "")
+                            item.target = self
+                            item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
+                            if mode.isCurrent {
+                                item.state = .on
+                            }
+                            menu.addItem(item)
                         }
-                        menu.addItem(item)
                     }
-                }
-                
-                if !hiDpiModes.isEmpty && !loDpiModes.isEmpty {
-                    menu.addItem(NSMenuItem.separator())
-                }
-                
-                if !loDpiModes.isEmpty {
-                    for mode in loDpiModes {
-                        let title = "    \(mode.width) × \(mode.height) (LoDPI)"
-                        let item = NSMenuItem(title: title, action: #selector(selectMode(_:)), keyEquivalent: "")
-                        item.target = self
-                        item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
-                        if mode.isCurrent {
-                            item.state = .on
+                    
+                    if !hiDpiModes.isEmpty && !loDpiModes.isEmpty {
+                        menu.addItem(NSMenuItem.separator())
+                    }
+                    
+                    if !loDpiModes.isEmpty {
+                        for mode in loDpiModes {
+                            let title = "    \(mode.width) × \(mode.height) (LoDPI)"
+                            let item = NSMenuItem(title: title, action: #selector(selectMode(_:)), keyEquivalent: "")
+                            item.target = self
+                            item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
+                            if mode.isCurrent {
+                                item.state = .on
+                            }
+                            menu.addItem(item)
                         }
-                        menu.addItem(item)
                     }
                 }
             }
@@ -272,6 +371,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let refreshItem = NSMenuItem(title: "Refresh Displays", action: #selector(refreshMenu), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
+
+        // Preferences Submenu
+        let prefItem = NSMenuItem(title: "Preferences", action: nil, keyEquivalent: "")
+        let prefMenu = NSMenu()
+
+        // 1. View Mode Button (List vs Slider)
+        let modeTitle = isSliderViewEnabled ? "Switch to List View" : "Switch to Slider View"
+        let viewModeItem = NSMenuItem(title: modeTitle, action: #selector(toggleViewMode), keyEquivalent: "")
+        viewModeItem.target = self
+        prefMenu.addItem(viewModeItem)
+
+        prefMenu.addItem(NSMenuItem.separator())
+
+        // 2. HiDPI Switch / Toggle
+        let hidpiItem = NSMenuItem(title: "Enable HiDPI Modes", action: #selector(toggleHiDPI), keyEquivalent: "")
+        hidpiItem.target = self
+        hidpiItem.state = isHiDPIEnabled ? .on : .off
+        prefMenu.addItem(hidpiItem)
+
+        // 3. LoDPI Switch / Toggle
+        let lodpiItem = NSMenuItem(title: "Enable LoDPI Modes", action: #selector(toggleLoDPI), keyEquivalent: "")
+        lodpiItem.target = self
+        lodpiItem.state = isLoDPIEnabled ? .on : .off
+        prefMenu.addItem(lodpiItem)
+
+        prefItem.submenu = prefMenu
+        menu.addItem(prefItem)
 
         let loginItem = NSMenuItem(title: "Open at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         loginItem.target = self
@@ -289,18 +415,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(quitItem)
     }
 
+    func applyMode(screenId: String, modeId: Int) {
+        let command = "id:\(screenId) mode:\(modeId)"
+        _ = runDisplayPlacer(args: [command])
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.refreshMenu()
+        }
+    }
+
     @objc func selectMode(_ sender: NSMenuItem) {
         guard let dict = sender.representedObject as? [String: Any],
               let screenId = dict["screenId"] as? String,
               let modeId = dict["modeId"] as? Int else { return }
         
-        let command = "id:\(screenId) mode:\(modeId)"
-        _ = runDisplayPlacer(args: [command])
-        
-        // Refresh menu after a short delay to reflect changes
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.refreshMenu()
-        }
+        applyMode(screenId: screenId, modeId: modeId)
+    }
+
+    @objc func toggleViewMode() {
+        isSliderViewEnabled = !isSliderViewEnabled
+    }
+
+    @objc func toggleHiDPI() {
+        isHiDPIEnabled = !isHiDPIEnabled
+    }
+
+    @objc func toggleLoDPI() {
+        isLoDPIEnabled = !isLoDPIEnabled
     }
 
     @objc func toggleLaunchAtLogin() {
@@ -356,6 +497,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         Features:
         • Instant display resolution switching
+        • Resolution Slider & List UI modes
+        • HiDPI & LoDPI toggles
         • Dynamic screen plug/unplug detection
         • Native macOS Menu Bar UI
         • Launch at Login support
