@@ -16,7 +16,7 @@ mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
 
 # Compile Swift code
 echo "Compiling Swift source..."
-swiftc -O "$PROJECT_DIR/main.swift" -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/DisplayMenu"
+swiftc -O "$PROJECT_DIR"/src/*.swift "$PROJECT_DIR"/src/Views/*.swift -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/DisplayMenu"
 
 # Copy Info.plist and AppIcon.icns
 echo "Packaging Info.plist & AppIcon..."
