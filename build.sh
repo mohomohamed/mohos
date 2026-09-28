@@ -18,9 +18,12 @@ mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
 echo "Compiling Swift source..."
 swiftc -O "$PROJECT_DIR/main.swift" -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/DisplayMenu"
 
-# Copy Info.plist
-echo "Packaging Info.plist..."
+# Copy Info.plist and AppIcon.icns
+echo "Packaging Info.plist & AppIcon..."
 cp "$PROJECT_DIR/Info.plist" "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
+if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
+    cp "$PROJECT_DIR/AppIcon.icns" "$BUILD_DIR/$APP_NAME/Contents/Resources/AppIcon.icns"
+fi
 
 # Code sign ad-hoc
 echo "Code signing app bundle..."
