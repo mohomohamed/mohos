@@ -24,10 +24,11 @@ struct DisplayInfo {
     let modes: [DisplayMode]
 }
 
-class ResolutionSliderView: NSView {
+// MARK: - Modern macOS Resolution Slider Card
+class ModernSliderView: NSView {
     let titleLabel: NSTextField
+    let modeBadge: NSTextField
     let slider: NSSlider
-    let resLabel: NSTextField
     let modes: [DisplayMode]
     let screenId: String
     weak var delegate: AppDelegate?
@@ -37,50 +38,81 @@ class ResolutionSliderView: NSView {
         self.screenId = display.screenId
         self.delegate = delegate
         
-        self.titleLabel = NSTextField(labelWithString: "📺 \(display.name)")
-        self.titleLabel.font = NSFont.boldSystemFont(ofSize: 12)
-
-        let maxVal = Double(max(0, modes.count - 1))
-        self.slider = NSSlider(value: 0, minValue: 0, maxValue: maxVal, target: nil, action: nil)
-        self.slider.numberOfTickMarks = max(2, modes.count)
-        self.slider.allowsTickMarkValuesOnly = true
-        self.slider.isContinuous = true
+        // Display Title (Icon + Name)
+        let tLabel = NSTextField(labelWithString: "📺  \(display.name)")
+        tLabel.font = NSFont.systemFont(ofSize: 12, weight: .bold)
+        tLabel.textColor = NSColor.labelColor
+        tLabel.frame = NSRect(x: 14, y: frame.height - 26, width: 140, height: 18)
+        self.titleLabel = tLabel
         
+        // Current Resolution Badge
         let currentIdx = modes.firstIndex(where: { $0.isCurrent }) ?? 0
-        self.slider.integerValue = currentIdx
+        let initialText = modes.indices.contains(currentIdx) ? "\(modes[currentIdx].width)×\(modes[currentIdx].height) (\(modes[currentIdx].isScaled ? "HiDPI" : "LoDPI"))" : ""
         
-        self.resLabel = NSTextField(labelWithString: "")
-        self.resLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        self.resLabel.alignment = .center
+        let mBadge = NSTextField(labelWithString: initialText)
+        mBadge.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        mBadge.textColor = NSColor.secondaryLabelColor
+        mBadge.alignment = .right
+        mBadge.frame = NSRect(x: frame.width - 154, y: frame.height - 26, width: 140, height: 18)
+        self.modeBadge = mBadge
+
+        // Modern Slider + SF Symbols
+        let maxVal = Double(max(0, modes.count - 1))
+        let sSlider = NSSlider(value: 0, minValue: 0, maxValue: maxVal, target: nil, action: nil)
         
+        if #available(macOS 11.0, *) {
+            sSlider.frame = NSRect(x: 36, y: 12, width: frame.width - 72, height: 20)
+        } else {
+            sSlider.frame = NSRect(x: 14, y: 12, width: frame.width - 28, height: 20)
+        }
+        
+        sSlider.numberOfTickMarks = max(2, modes.count)
+        sSlider.allowsTickMarkValuesOnly = true
+        sSlider.isContinuous = true
+        sSlider.integerValue = currentIdx
+        self.slider = sSlider
+
         super.init(frame: frame)
         
-        titleLabel.frame = NSRect(x: 16, y: frame.height - 24, width: frame.width - 32, height: 18)
-        slider.frame = NSRect(x: 16, y: 30, width: frame.width - 32, height: 22)
-        resLabel.frame = NSRect(x: 16, y: 8, width: frame.width - 32, height: 16)
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.06).cgColor
         
         addSubview(titleLabel)
-        addSubview(slider)
-        addSubview(resLabel)
+        addSubview(modeBadge)
+        
+        if #available(macOS 11.0, *) {
+            let lowIcon = NSImageView(frame: NSRect(x: 14, y: 14, width: 16, height: 16))
+            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+            lowIcon.image = NSImage(systemSymbolName: "rectangle.compress.vertical", accessibilityDescription: nil)?.withSymbolConfiguration(config)
+            lowIcon.contentTintColor = NSColor.tertiaryLabelColor
+            addSubview(lowIcon)
+            
+            let highIcon = NSImageView(frame: NSRect(x: frame.width - 30, y: 14, width: 16, height: 16))
+            highIcon.image = NSImage(systemSymbolName: "rectangle.expand.vertical", accessibilityDescription: nil)?.withSymbolConfiguration(config)
+            highIcon.contentTintColor = NSColor.tertiaryLabelColor
+            addSubview(highIcon)
+        }
         
         slider.target = self
         slider.action = #selector(sliderChanged(_:))
         
-        updateLabel(for: currentIdx)
+        addSubview(slider)
+        updateBadge(for: currentIdx)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func updateLabel(for index: Int) {
+    func updateBadge(for index: Int) {
         guard index >= 0 && index < modes.count else { return }
         let m = modes[index]
-        let currentTag = m.isCurrent ? " (Current)" : ""
-        resLabel.stringValue = "\(m.width) × \(m.height) (\(m.isScaled ? "HiDPI" : "LoDPI"))\(currentTag)"
+        let currentTag = m.isCurrent ? " • Active" : ""
+        modeBadge.stringValue = "\(m.width) × \(m.height) (\(m.isScaled ? "HiDPI" : "LoDPI"))\(currentTag)"
     }
 
     @objc func sliderChanged(_ sender: NSSlider) {
         let idx = sender.integerValue
-        updateLabel(for: idx)
+        updateBadge(for: idx)
         
         if let event = NSApp.currentEvent, event.type == .leftMouseUp {
             guard idx >= 0 && idx < modes.count else { return }
@@ -92,6 +124,55 @@ class ResolutionSliderView: NSView {
     }
 }
 
+// MARK: - Modern macOS NSSwitch Preference Row
+class PreferencesSwitchRow: NSView {
+    let label: NSTextField
+    var toggleControl: NSControl?
+    let onChange: (Bool) -> Void
+
+    init(frame: NSRect, title: String, isOn: Bool, onChange: @escaping (Bool) -> Void) {
+        self.onChange = onChange
+        
+        let l = NSTextField(labelWithString: title)
+        l.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        l.textColor = NSColor.labelColor
+        l.frame = NSRect(x: 16, y: (frame.height - 18) / 2, width: frame.width - 70, height: 18)
+        self.label = l
+
+        super.init(frame: frame)
+        
+        addSubview(label)
+        
+        if #available(macOS 10.15, *) {
+            let sw = NSSwitch(frame: NSRect(x: frame.width - 54, y: (frame.height - 24) / 2, width: 38, height: 24))
+            sw.state = isOn ? .on : .off
+            sw.target = self
+            sw.action = #selector(switchToggled(_:))
+            toggleControl = sw
+            addSubview(sw)
+        } else {
+            let btn = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+            btn.state = isOn ? .on : .off
+            btn.frame = NSRect(x: frame.width - 34, y: (frame.height - 20) / 2, width: 20, height: 20)
+            btn.target = self
+            btn.action = #selector(switchToggled(_:))
+            toggleControl = btn
+            addSubview(btn)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc func switchToggled(_ sender: Any) {
+        if #available(macOS 10.15, *), let sw = sender as? NSSwitch {
+            onChange(sw.state == .on)
+        } else if let btn = sender as? NSButton {
+            onChange(btn.state == .on)
+        }
+    }
+}
+
+// MARK: - Main Application Delegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     var menu: NSMenu!
@@ -288,7 +369,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     menu.addItem(NSMenuItem.separator())
                 }
                 
-                // Preferred modes filter (8-bit or current)
+                // Filter modes (8-bit depth or current)
                 let preferredModes = display.modes.filter { $0.colorDepth == 8 || $0.isCurrent }
                 let modesToShow = preferredModes.isEmpty ? display.modes : preferredModes
                 
@@ -310,17 +391,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
                 
                 if isSliderViewEnabled {
-                    // Slider View Mode: lower resolution at index 0 (left), higher resolution at max index (right)
+                    // Modern Slider Card View (lower res at left, higher res at right)
                     let sliderModes = Array(uniqueModes.reversed())
-                    let sliderView = ResolutionSliderView(
-                        frame: NSRect(x: 0, y: 0, width: 270, height: 78),
+                    let sliderView = ModernSliderView(
+                        frame: NSRect(x: 0, y: 0, width: 280, height: 60),
                         display: display,
                         modes: sliderModes,
                         delegate: self
                     )
-                    let sliderMenuItem = NSMenuItem()
-                    sliderMenuItem.view = sliderView
-                    menu.addItem(sliderMenuItem)
+                    let containerItem = NSMenuItem()
+                    containerItem.view = sliderView
+                    menu.addItem(containerItem)
                 } else {
                     // List View Mode
                     let titleItem = NSMenuItem(title: "📺 \(display.name)", action: nil, keyEquivalent: "")
@@ -376,25 +457,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let prefItem = NSMenuItem(title: "Preferences", action: nil, keyEquivalent: "")
         let prefMenu = NSMenu()
 
-        // 1. View Mode Button (List vs Slider)
-        let modeTitle = isSliderViewEnabled ? "Switch to List View" : "Switch to Slider View"
-        let viewModeItem = NSMenuItem(title: modeTitle, action: #selector(toggleViewMode), keyEquivalent: "")
-        viewModeItem.target = self
-        prefMenu.addItem(viewModeItem)
+        // 1. Slider View Switch Row
+        let sliderRowView = PreferencesSwitchRow(
+            frame: NSRect(x: 0, y: 0, width: 220, height: 32),
+            title: "Resolution Slider",
+            isOn: isSliderViewEnabled
+        ) { [weak self] enabled in
+            self?.isSliderViewEnabled = enabled
+        }
+        let sliderRowItem = NSMenuItem()
+        sliderRowItem.view = sliderRowView
+        prefMenu.addItem(sliderRowItem)
 
         prefMenu.addItem(NSMenuItem.separator())
 
-        // 2. HiDPI Switch / Toggle
-        let hidpiItem = NSMenuItem(title: "Enable HiDPI Modes", action: #selector(toggleHiDPI), keyEquivalent: "")
-        hidpiItem.target = self
-        hidpiItem.state = isHiDPIEnabled ? .on : .off
-        prefMenu.addItem(hidpiItem)
+        // 2. HiDPI NSSwitch Row
+        let hidpiRowView = PreferencesSwitchRow(
+            frame: NSRect(x: 0, y: 0, width: 220, height: 32),
+            title: "HiDPI Modes",
+            isOn: isHiDPIEnabled
+        ) { [weak self] enabled in
+            self?.isHiDPIEnabled = enabled
+        }
+        let hidpiRowItem = NSMenuItem()
+        hidpiRowItem.view = hidpiRowView
+        prefMenu.addItem(hidpiRowItem)
 
-        // 3. LoDPI Switch / Toggle
-        let lodpiItem = NSMenuItem(title: "Enable LoDPI Modes", action: #selector(toggleLoDPI), keyEquivalent: "")
-        lodpiItem.target = self
-        lodpiItem.state = isLoDPIEnabled ? .on : .off
-        prefMenu.addItem(lodpiItem)
+        // 3. LoDPI NSSwitch Row
+        let lodpiRowView = PreferencesSwitchRow(
+            frame: NSRect(x: 0, y: 0, width: 220, height: 32),
+            title: "LoDPI Modes",
+            isOn: isLoDPIEnabled
+        ) { [weak self] enabled in
+            self?.isLoDPIEnabled = enabled
+        }
+        let lodpiRowItem = NSMenuItem()
+        lodpiRowItem.view = lodpiRowView
+        prefMenu.addItem(lodpiRowItem)
 
         prefItem.submenu = prefMenu
         menu.addItem(prefItem)
@@ -430,18 +529,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
               let modeId = dict["modeId"] as? Int else { return }
         
         applyMode(screenId: screenId, modeId: modeId)
-    }
-
-    @objc func toggleViewMode() {
-        isSliderViewEnabled = !isSliderViewEnabled
-    }
-
-    @objc func toggleHiDPI() {
-        isHiDPIEnabled = !isHiDPIEnabled
-    }
-
-    @objc func toggleLoDPI() {
-        isLoDPIEnabled = !isLoDPIEnabled
     }
 
     @objc func toggleLaunchAtLogin() {
@@ -497,8 +584,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         Features:
         • Instant display resolution switching
-        • Resolution Slider & List UI modes
-        • HiDPI & LoDPI toggles
+        • Modern macOS Slider Card UI
+        • Native macOS NSSwitch toggles for HiDPI & LoDPI
         • Dynamic screen plug/unplug detection
         • Native macOS Menu Bar UI
         • Launch at Login support
