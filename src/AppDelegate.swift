@@ -61,7 +61,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
     @objc public func refreshMenu() {
         menu.removeAllItems()
-        let menuWidth: CGFloat = 320
+        let menuWidth: CGFloat = 340
         
         let displayplacerPath = DisplayManager.shared.displayplacerPath
         if displayplacerPath.isEmpty || !FileManager.default.fileExists(atPath: displayplacerPath) {

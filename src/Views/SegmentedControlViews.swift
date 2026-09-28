@@ -16,13 +16,7 @@ public final class ControlRowView: NSView {
         layer?.cornerRadius = 8
         layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.03).cgColor
         
-        let label = NSTextField(labelWithString: "Mode")
-        label.font = NSFont.systemFont(ofSize: 11, weight: .bold)
-        label.textColor = NSColor.labelColor
-        label.frame = NSRect(x: 12, y: 12, width: 38, height: 16)
-        addSubview(label)
-        
-        // Display Filter Mode Segmented Control [ HiDPI | LoDPI | All ]
+        // Display Filter Mode Segmented Control [ All | HiDPI | LoDPI ]
         let currentFilter = PreferencesManager.shared.displayFilterMode
         let filterSeg = NSSegmentedControl(labels: ["All", "HiDPI", "LoDPI"], trackingMode: .selectOne, target: nil, action: nil)
         switch currentFilter {
@@ -30,8 +24,8 @@ public final class ControlRowView: NSView {
         case .hiDPIOnly: filterSeg.selectedSegment = 1
         case .loDPIOnly: filterSeg.selectedSegment = 2
         }
-        filterSeg.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        filterSeg.frame = NSRect(x: 52, y: 9, width: 130, height: 22)
+        filterSeg.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        filterSeg.frame = NSRect(x: 12, y: 9, width: 138, height: 22)
         addSubview(filterSeg)
         
         // View Mode Segmented Control [ List | Res | Text Size ]
@@ -43,7 +37,7 @@ public final class ControlRowView: NSView {
         case .textSize: viewSeg.selectedSegment = 2
         }
         viewSeg.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        viewSeg.frame = NSRect(x: width - 142 - 12, y: 9, width: 142, height: 22)
+        viewSeg.frame = NSRect(x: width - 146 - 12, y: 9, width: 146, height: 22)
         addSubview(viewSeg)
         
         // Target Actions
