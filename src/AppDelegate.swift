@@ -19,7 +19,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         if let button = statusItem.button {
             if #available(macOS 11.0, *) {
                 let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-                if let img = NSImage(systemSymbolName: "display", accessibilityDescription: "Display Menu")?.withSymbolConfiguration(config) {
+                if let img = NSImage(systemSymbolName: "display", accessibilityDescription: "mohos")?.withSymbolConfiguration(config) {
                     img.isTemplate = true
                     button.image = img
                 }
@@ -237,7 +237,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
     @objc private func showAbout() {
         let alert = NSAlert()
-        alert.messageText = "DisplayMenu"
+        alert.messageText = "mohos"
         alert.informativeText = """
         Created & Developed by Mohamed Moho
 
@@ -248,7 +248,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
         Features:
         • Instant display resolution switching
-        • ⌘⇧4 → Clipboard Screenshot Workflow (no files created on disk)
+        • ⌘⇧4 → Clipboard Screenshot Workflow (zero disk writes)
         • macOS Control Center Capsule Slider View
         • Segmented HiDPI / LoDPI & List / Slider controls
         • Dynamic screen plug/unplug detection

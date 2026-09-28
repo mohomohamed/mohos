@@ -3,11 +3,11 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="DisplayMenu.app"
+APP_NAME="mohos.app"
 BUILD_DIR="$PROJECT_DIR/build"
 INSTALL_DIR="$HOME/Applications"
 
-echo "=== Building DisplayMenu ==="
+echo "=== Building mohos ==="
 
 # Clean build directory
 rm -rf "$BUILD_DIR"
@@ -16,7 +16,7 @@ mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
 
 # Compile Swift code
 echo "Compiling Swift source..."
-swiftc -O "$PROJECT_DIR"/src/*.swift "$PROJECT_DIR"/src/Views/*.swift -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/DisplayMenu"
+swiftc -O "$PROJECT_DIR"/src/*.swift "$PROJECT_DIR"/src/Views/*.swift -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/mohos"
 
 # Copy Info.plist and AppIcon.icns
 echo "Packaging Info.plist & AppIcon..."
@@ -34,6 +34,7 @@ echo "Installing to $INSTALL_DIR/$APP_NAME..."
 mkdir -p "$INSTALL_DIR"
 
 # Kill running instance if exists
+pkill -x "mohos" 2>/dev/null || true
 pkill -x "DisplayMenu" 2>/dev/null || true
 
 # Copy bundle
@@ -41,6 +42,6 @@ rm -rf "$INSTALL_DIR/$APP_NAME"
 cp -R "$BUILD_DIR/$APP_NAME" "$INSTALL_DIR/$APP_NAME"
 
 echo "=== Build and Installation Complete ==="
-echo "DisplayMenu installed at: $INSTALL_DIR/$APP_NAME"
-echo "Launching DisplayMenu..."
+echo "mohos installed at: $INSTALL_DIR/$APP_NAME"
+echo "Launching mohos..."
 open "$INSTALL_DIR/$APP_NAME"

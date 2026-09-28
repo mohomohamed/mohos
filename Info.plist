@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>DisplayMenu</string>
+    <string>mohos</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon.icns</string>
     <key>CFBundleIdentifier</key>
-    <string>com.moho.DisplayMenu</string>
+    <string>com.moho.mohos</string>
     <key>CFBundleName</key>
-    <string>DisplayMenu</string>
+    <string>mohos</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

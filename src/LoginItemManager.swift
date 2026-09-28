@@ -19,7 +19,7 @@ public final class LoginItemManager {
             if #available(macOS 13.0, *) {
                 return SMAppService.mainApp.status == .enabled
             } else {
-                let plistPath = NSString(string: "~/Library/LaunchAgents/com.moho.DisplayMenu.plist").expandingTildeInPath
+                let plistPath = NSString(string: "~/Library/LaunchAgents/com.moho.mohos.plist").expandingTildeInPath
                 return FileManager.default.fileExists(atPath: plistPath)
             }
         }
@@ -50,14 +50,14 @@ public final class LoginItemManager {
     }
     
     private func fallbackLaunchAgent(enabled: Bool) {
-        let plistPath = NSString(string: "~/Library/LaunchAgents/com.moho.DisplayMenu.plist").expandingTildeInPath
+        let plistPath = NSString(string: "~/Library/LaunchAgents/com.moho.mohos.plist").expandingTildeInPath
         let fileManager = FileManager.default
 
         if enabled {
             let launchAgentsDir = NSString(string: "~/Library/LaunchAgents").expandingTildeInPath
             try? fileManager.createDirectory(atPath: launchAgentsDir, withIntermediateDirectories: true, attributes: nil)
             
-            let appPath = Bundle.main.bundlePath + "/Contents/MacOS/DisplayMenu"
+            let appPath = Bundle.main.bundlePath + "/Contents/MacOS/mohos"
             let plistContent = """
             <?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -65,7 +65,7 @@ public final class LoginItemManager {
             <plist version="1.0">
             <dict>
                 <key>Label</key>
-                <string>com.moho.DisplayMenu</string>
+                <string>com.moho.mohos</string>
                 <key>ProgramArguments</key>
                 <array>
                     <string>\(appPath)</string>
