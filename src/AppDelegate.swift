@@ -284,6 +284,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         alert.runModal()
     }
 
+    public func menuWillOpen(_ menu: NSMenu) {
+        PermissionManager.shared.startPermissionPollingIfNeeded()
+        refreshMenu()
+    }
+
     @objc private func quitApp() {
         ScreenshotShortcutManager.shared.stop()
         NSApplication.shared.terminate(nil)
