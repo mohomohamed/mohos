@@ -34,12 +34,16 @@ public final class ControlRowView: NSView {
         filterSeg.frame = NSRect(x: 52, y: 9, width: 130, height: 22)
         addSubview(filterSeg)
         
-        // View Mode Segmented Control [ List | Slider ]
+        // View Mode Segmented Control [ List | Res | Text Size ]
         let currentView = PreferencesManager.shared.viewMode
-        let viewSeg = NSSegmentedControl(labels: ["List", "Slider"], trackingMode: .selectOne, target: nil, action: nil)
-        viewSeg.selectedSegment = (currentView == .slider) ? 1 : 0
-        viewSeg.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        viewSeg.frame = NSRect(x: width - 100 - 12, y: 9, width: 100, height: 22)
+        let viewSeg = NSSegmentedControl(labels: ["List", "Res", "Text Size"], trackingMode: .selectOne, target: nil, action: nil)
+        switch currentView {
+        case .list: viewSeg.selectedSegment = 0
+        case .slider: viewSeg.selectedSegment = 1
+        case .textSize: viewSeg.selectedSegment = 2
+        }
+        viewSeg.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        viewSeg.frame = NSRect(x: width - 142 - 12, y: 9, width: 142, height: 22)
         addSubview(viewSeg)
         
         // Target Actions
@@ -69,7 +73,12 @@ public final class ControlRowView: NSView {
     }
     
     @objc private func viewSegmentChanged(_ sender: NSSegmentedControl) {
-        let mode: ViewMode = (sender.selectedSegment == 1) ? .slider : .list
+        let mode: ViewMode
+        switch sender.selectedSegment {
+        case 1: mode = .slider
+        case 2: mode = .textSize
+        default: mode = .list
+        }
         PreferencesManager.shared.viewMode = mode
         onViewChangeClosure?(mode)
     }

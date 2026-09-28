@@ -30,8 +30,9 @@ public struct SettingsView: View {
                         }
                     
                     Picker("Default View Mode", selection: $viewModeRaw) {
-                        Text("Slider View").tag(1)
                         Text("List View").tag(0)
+                        Text("Resolution Slider").tag(1)
+                        Text("Text Size Slider").tag(2)
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: viewModeRaw) { newValue in

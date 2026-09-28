@@ -125,8 +125,22 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
                 controlItem.view = controlRow
                 menu.addItem(controlItem)
                 
-                // 3. Resolutions Display (List or Control Center Slider)
-                if PreferencesManager.shared.viewMode == .slider {
+                // 3. Resolutions Display (List, Control Center Res Slider, or Text Size Slider)
+                if PreferencesManager.shared.viewMode == .textSize {
+                    let textSizeContainer = TextSizeSliderContainerItemView(
+                        display: display,
+                        modes: uniqueModes,
+                        width: menuWidth,
+                        onApplyMode: { [weak self] screenId, modeId in
+                            DisplayManager.shared.applyMode(screenId: screenId, modeId: modeId) { _ in
+                                self?.refreshMenu()
+                            }
+                        }
+                    )
+                    let textSizeMenuItem = NSMenuItem()
+                    textSizeMenuItem.view = textSizeContainer
+                    menu.addItem(textSizeMenuItem)
+                } else if PreferencesManager.shared.viewMode == .slider {
                     let sliderModes = Array(uniqueModes.reversed())
                     let sliderContainer = ControlCenterSliderContainerItemView(
                         display: display,

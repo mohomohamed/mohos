@@ -45,6 +45,7 @@ public struct DisplayInfo: Equatable {
 public enum ViewMode: Int {
     case list = 0
     case slider = 1
+    case textSize = 2
 }
 
 public enum DisplayFilterMode: Int {
