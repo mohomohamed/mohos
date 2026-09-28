@@ -12,17 +12,27 @@ echo "=== Building mohos ==="
 # Clean build directory
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/MacOS"
-mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
+mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources/Tools"
 
 # Compile Swift code
 echo "Compiling Swift source..."
-swiftc -O "$PROJECT_DIR"/src/*.swift "$PROJECT_DIR"/src/Views/*.swift -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/mohos"
+swiftc -O "$PROJECT_DIR"/src/*.swift "$PROJECT_DIR"/src/Views/*.swift "$PROJECT_DIR"/src/Settings/*.swift -o "$BUILD_DIR/$APP_NAME/Contents/MacOS/mohos"
 
 # Copy Info.plist and AppIcon.icns
 echo "Packaging Info.plist & AppIcon..."
 cp "$PROJECT_DIR/Info.plist" "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
     cp "$PROJECT_DIR/AppIcon.icns" "$BUILD_DIR/$APP_NAME/Contents/Resources/AppIcon.icns"
+fi
+
+# Bundle displayplacer binary if available locally
+echo "Bundling displayplacer engine..."
+if [ -f "/usr/local/bin/displayplacer" ]; then
+    cp "/usr/local/bin/displayplacer" "$BUILD_DIR/$APP_NAME/Contents/Resources/Tools/displayplacer"
+    chmod +x "$BUILD_DIR/$APP_NAME/Contents/Resources/Tools/displayplacer"
+elif [ -f "/opt/homebrew/bin/displayplacer" ]; then
+    cp "/opt/homebrew/bin/displayplacer" "$BUILD_DIR/$APP_NAME/Contents/Resources/Tools/displayplacer"
+    chmod +x "$BUILD_DIR/$APP_NAME/Contents/Resources/Tools/displayplacer"
 fi
 
 # Code sign ad-hoc
@@ -35,7 +45,6 @@ mkdir -p "$INSTALL_DIR"
 
 # Kill running instance if exists
 pkill -x "mohos" 2>/dev/null || true
-pkill -x "DisplayMenu" 2>/dev/null || true
 
 # Copy bundle
 rm -rf "$INSTALL_DIR/$APP_NAME"

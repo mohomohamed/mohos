@@ -133,7 +133,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
                         modes: sliderModes,
                         width: menuWidth,
                         onApplyMode: { [weak self] screenId, modeId in
-                            DisplayManager.shared.applyMode(screenId: screenId, modeId: modeId) {
+                            DisplayManager.shared.applyMode(screenId: screenId, modeId: modeId) { _ in
                                 self?.refreshMenu()
                             }
                         }
@@ -196,6 +196,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
         menu.addItem(NSMenuItem.separator())
 
+        // Settings
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         // Refresh Displays
         let refreshItem = NSMenuItem(title: "Refresh Displays", action: #selector(refreshMenu), keyEquivalent: "r")
         refreshItem.target = self
@@ -207,17 +212,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         loginItem.state = LoginItemManager.shared.isEnabled ? .on : .off
         menu.addItem(loginItem)
 
-        // About DisplayMenu
-        let aboutItem = NSMenuItem(title: "About DisplayMenu", action: #selector(showAbout), keyEquivalent: "")
+        // About mohos
+        let aboutItem = NSMenuItem(title: "About mohos", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // Quit DisplayMenu
-        let quitItem = NSMenuItem(title: "Quit DisplayMenu", action: #selector(quitApp), keyEquivalent: "q")
+        // Quit mohos
+        let quitItem = NSMenuItem(title: "Quit mohos", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
+    }
+
+    @objc private func openSettings() {
+        SettingsWindowManager.shared.showSettings()
     }
 
     @objc private func selectMode(_ sender: NSMenuItem) {
@@ -225,7 +234,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
               let screenId = dict["screenId"] as? String,
               let modeId = dict["modeId"] as? Int else { return }
         
-        DisplayManager.shared.applyMode(screenId: screenId, modeId: modeId) { [weak self] in
+        DisplayManager.shared.applyMode(screenId: screenId, modeId: modeId) { [weak self] _ in
             self?.refreshMenu()
         }
     }

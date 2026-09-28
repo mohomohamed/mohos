@@ -1,6 +1,6 @@
 //
 //  DisplayManager.swift
-//  DisplayMenu
+//  mohos
 //
 //  Created & Developed by Mohamed Moho
 //  Copyright © 2026 Mohamed Moho. All rights reserved.
@@ -9,16 +9,36 @@
 import AppKit
 import Foundation
 
-public final class DisplayManager {
+public final class DisplayManager: DisplayEngine {
     public static let shared = DisplayManager()
     
     public private(set) var displayplacerPath: String = ""
+    
+    public var enginePath: String {
+        return displayplacerPath
+    }
     
     private init() {
         locateDisplayPlacer()
     }
     
     public func locateDisplayPlacer() {
+        // 1. Check Bundled Engine inside mohos.app/Contents/Resources/Tools/displayplacer
+        if let bundleToolsPath = Bundle.main.resourcePath?.appending("/Tools/displayplacer"),
+           FileManager.default.fileExists(atPath: bundleToolsPath) {
+            displayplacerPath = bundleToolsPath
+            Log.display.info("Found bundled displayplacer engine at: \(bundleToolsPath, privacy: .public)")
+            return
+        }
+        
+        if let bundleUrl = Bundle.main.url(forResource: "displayplacer", withExtension: nil, subdirectory: "Tools"),
+           FileManager.default.fileExists(atPath: bundleUrl.path) {
+            displayplacerPath = bundleUrl.path
+            Log.display.info("Found bundled displayplacer engine via Bundle URL: \(bundleUrl.path, privacy: .public)")
+            return
+        }
+
+        // 2. System Fallback Paths
         let possiblePaths = [
             "/usr/local/bin/displayplacer",
             "/opt/homebrew/bin/displayplacer",
@@ -28,11 +48,12 @@ public final class DisplayManager {
         for path in possiblePaths {
             if FileManager.default.fileExists(atPath: path) {
                 displayplacerPath = path
+                Log.display.info("Using system displayplacer engine at: \(path, privacy: .public)")
                 return
             }
         }
         
-        // Fallback search via which
+        // 3. Fallback search via which
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         task.arguments = ["displayplacer"]
@@ -44,6 +65,7 @@ public final class DisplayManager {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !output.isEmpty {
                 displayplacerPath = output
+                Log.display.info("Found displayplacer via which: \(output, privacy: .public)")
                 return
             }
         } catch {}
@@ -51,8 +73,13 @@ public final class DisplayManager {
         displayplacerPath = "/usr/local/bin/displayplacer"
     }
     
+    public func isEngineAvailable() -> Bool {
+        return !displayplacerPath.isEmpty && FileManager.default.isExecutableFile(atPath: displayplacerPath)
+    }
+    
     public func runDisplayPlacer(args: [String]) -> String? {
-        guard !displayplacerPath.isEmpty, FileManager.default.isExecutableFile(atPath: displayplacerPath) else {
+        guard isEngineAvailable() else {
+            Log.display.error("Display engine unavailable at path: \(self.displayplacerPath, privacy: .public)")
             return nil
         }
         let task = Process()
@@ -66,6 +93,7 @@ public final class DisplayManager {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             return String(data: data, encoding: .utf8)
         } catch {
+            Log.display.error("Error executing displayplacer: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -130,13 +158,19 @@ public final class DisplayManager {
         return DisplayMode(modeId: modeId, width: width, height: height, colorDepth: colorDepth, isScaled: isScaled, isCurrent: isCurrent)
     }
     
-    public func applyMode(screenId: String, modeId: Int, completion: (() -> Void)? = nil) {
+    public func applyMode(screenId: String, modeId: Int, completion: ((Result<Void, DisplayEngineError>) -> Void)? = nil) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let command = "id:\(screenId) mode:\(modeId)"
-            _ = self?.runDisplayPlacer(args: [command])
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                completion?()
+            if let result = self?.runDisplayPlacer(args: [command]), !result.isEmpty {
+                Log.display.info("Successfully applied mode \(modeId) for screen \(screenId, privacy: .public)")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    completion?(.success(()))
+                }
+            } else {
+                Log.display.error("Failed to apply mode \(modeId) for screen \(screenId, privacy: .public)")
+                DispatchQueue.main.async {
+                    completion?(.failure(.commandFailed(output: "Could not apply resolution")))
+                }
             }
         }
     }
