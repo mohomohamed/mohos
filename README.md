@@ -1,7 +1,7 @@
 # mohos
 
 <p align="center">
-  <img src="AppIcon.icns" width="128" height="128" alt="mohos App Icon">
+  <img src="mohos.png" width="140" height="140" alt="mohos App Icon">
   <h3 align="center">mohos</h3>
   <p align="center">
     A lightweight, native macOS menu bar utility for instant display resolution management and zero-file clipboard screenshot workflows.

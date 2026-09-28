@@ -109,8 +109,6 @@ public final class ScreenshotWorkflowView: NSView {
         }
     }
     
-    private var onToggleClosure: ((Bool) -> Void)?
-    
     @objc private func switchToggled(_ sender: Any) {
         if #available(macOS 10.15, *), let sw = sender as? NSSwitch {
             onToggleClosure?(sw.state == .on)
