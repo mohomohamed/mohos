@@ -34,8 +34,11 @@ public final class PreferencesManager {
     
     public var viewMode: ViewMode {
         get {
+            if UserDefaults.standard.object(forKey: Keys.viewMode) == nil {
+                return .slider
+            }
             let raw = UserDefaults.standard.integer(forKey: Keys.viewMode)
-            return ViewMode(rawValue: raw) ?? .list
+            return ViewMode(rawValue: raw) ?? .slider
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: Keys.viewMode)
