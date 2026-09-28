@@ -77,13 +77,13 @@ class ModernControlCenterSliderView: NSView {
             addSubview(leftIconView)
         }
         
-        // Title Label (e.g. Built-in Display)
+        // Title Label
         titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .bold)
         titleLabel.textColor = NSColor.labelColor
         titleLabel.lineBreakMode = .byTruncatingTail
         addSubview(titleLabel)
         
-        // Resolution Detail Label (e.g. 1920×1080 HiDPI)
+        // Resolution Detail Label
         detailLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
         detailLabel.textColor = NSColor.secondaryLabelColor
         detailLabel.alignment = .right
@@ -164,7 +164,7 @@ class ModernControlCenterSliderView: NSView {
     }
 }
 
-// MARK: - Slider Menu Item Container (Padding Wrapper)
+// MARK: - Slider Container View (Padding Wrapper)
 class SliderContainerItemView: NSView {
     init(display: DisplayInfo, modes: [DisplayMode], delegate: AppDelegate) {
         super.init(frame: NSRect(x: 0, y: 0, width: 320, height: 54))
@@ -180,52 +180,85 @@ class SliderContainerItemView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
-// MARK: - Modern macOS NSSwitch Preference Row
-class PreferencesSwitchRow: NSView {
-    let label: NSTextField
-    var toggleControl: NSControl?
-    let onChange: (Bool) -> Void
+// MARK: - Top-Level Quick Access Controls (1-Click Switches & Segmented Control)
+class TopLevelControlsView: NSView {
+    weak var delegate: AppDelegate?
 
-    init(frame: NSRect, title: String, isOn: Bool, onChange: @escaping (Bool) -> Void) {
-        self.onChange = onChange
-        
-        let l = NSTextField(labelWithString: title)
-        l.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        l.textColor = NSColor.labelColor
-        l.frame = NSRect(x: 16, y: (frame.height - 18) / 2, width: frame.width - 70, height: 18)
-        self.label = l
-
+    init(frame: NSRect, delegate: AppDelegate) {
+        self.delegate = delegate
         super.init(frame: frame)
         
-        addSubview(label)
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.05).cgColor
+        
+        // 1. HiDPI Switch Group
+        let hidpiLabel = NSTextField(labelWithString: "HiDPI")
+        hidpiLabel.font = NSFont.systemFont(ofSize: 11, weight: .bold)
+        hidpiLabel.textColor = NSColor.labelColor
+        hidpiLabel.frame = NSRect(x: 12, y: 12, width: 40, height: 16)
+        addSubview(hidpiLabel)
         
         if #available(macOS 10.15, *) {
-            let sw = NSSwitch(frame: NSRect(x: frame.width - 54, y: (frame.height - 24) / 2, width: 38, height: 24))
-            sw.state = isOn ? .on : .off
-            sw.target = self
-            sw.action = #selector(switchToggled(_:))
-            toggleControl = sw
-            addSubview(sw)
-        } else {
-            let btn = NSButton(checkboxWithTitle: "", target: nil, action: nil)
-            btn.state = isOn ? .on : .off
-            btn.frame = NSRect(x: frame.width - 34, y: (frame.height - 20) / 2, width: 20, height: 20)
-            btn.target = self
-            btn.action = #selector(switchToggled(_:))
-            toggleControl = btn
-            addSubview(btn)
+            let hidpiSw = NSSwitch(frame: NSRect(x: 52, y: 8, width: 38, height: 24))
+            hidpiSw.state = delegate.isHiDPIEnabled ? .on : .off
+            hidpiSw.target = self
+            hidpiSw.action = #selector(hidpiToggled(_:))
+            addSubview(hidpiSw)
         }
+        
+        // 2. LoDPI Switch Group
+        let lodpiLabel = NSTextField(labelWithString: "LoDPI")
+        lodpiLabel.font = NSFont.systemFont(ofSize: 11, weight: .bold)
+        lodpiLabel.textColor = NSColor.labelColor
+        lodpiLabel.frame = NSRect(x: 104, y: 12, width: 40, height: 16)
+        addSubview(lodpiLabel)
+        
+        if #available(macOS 10.15, *) {
+            let lodpiSw = NSSwitch(frame: NSRect(x: 144, y: 8, width: 38, height: 24))
+            lodpiSw.state = delegate.isLoDPIEnabled ? .on : .off
+            lodpiSw.target = self
+            lodpiSw.action = #selector(lodpiToggled(_:))
+            addSubview(lodpiSw)
+        }
+        
+        // 3. View Mode Segmented Control [ List | Slider ]
+        let seg = NSSegmentedControl(labels: ["List", "Slider"], trackingMode: .selectOne, target: self, action: #selector(segmentChanged(_:)))
+        seg.selectedSegment = delegate.isSliderViewEnabled ? 1 : 0
+        seg.frame = NSRect(x: frame.width - 96 - 10, y: 9, width: 96, height: 22)
+        seg.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        addSubview(seg)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    @objc func switchToggled(_ sender: Any) {
+    @objc func hidpiToggled(_ sender: Any) {
         if #available(macOS 10.15, *), let sw = sender as? NSSwitch {
-            onChange(sw.state == .on)
-        } else if let btn = sender as? NSButton {
-            onChange(btn.state == .on)
+            delegate?.isHiDPIEnabled = (sw.state == .on)
         }
     }
+
+    @objc func lodpiToggled(_ sender: Any) {
+        if #available(macOS 10.15, *), let sw = sender as? NSSwitch {
+            delegate?.isLoDPIEnabled = (sw.state == .on)
+        }
+    }
+
+    @objc func segmentChanged(_ sender: NSSegmentedControl) {
+        delegate?.isSliderViewEnabled = (sender.selectedSegment == 1)
+    }
+}
+
+class TopLevelControlsContainerItemView: NSView {
+    init(delegate: AppDelegate) {
+        super.init(frame: NSRect(x: 0, y: 0, width: 320, height: 50))
+        let controls = TopLevelControlsView(
+            frame: NSRect(x: 10, y: 5, width: 300, height: 40),
+            delegate: delegate
+        )
+        addSubview(controls)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 // MARK: - Main Application Delegate
@@ -500,6 +533,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         menu.addItem(NSMenuItem.separator())
+        
+        // 1-Click Top-Level Controls Bar
+        let controlsContainer = TopLevelControlsContainerItemView(delegate: self)
+        let controlsItem = NSMenuItem()
+        controlsItem.view = controlsContainer
+        menu.addItem(controlsItem)
+
+        menu.addItem(NSMenuItem.separator())
         addStandardMenuItems()
     }
 
@@ -507,51 +548,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let refreshItem = NSMenuItem(title: "Refresh Displays", action: #selector(refreshMenu), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
-
-        // Preferences Submenu
-        let prefItem = NSMenuItem(title: "Preferences", action: nil, keyEquivalent: "")
-        let prefMenu = NSMenu()
-
-        // 1. Slider View Switch Row
-        let sliderRowView = PreferencesSwitchRow(
-            frame: NSRect(x: 0, y: 0, width: 220, height: 32),
-            title: "Resolution Slider",
-            isOn: isSliderViewEnabled
-        ) { [weak self] enabled in
-            self?.isSliderViewEnabled = enabled
-        }
-        let sliderRowItem = NSMenuItem()
-        sliderRowItem.view = sliderRowView
-        prefMenu.addItem(sliderRowItem)
-
-        prefMenu.addItem(NSMenuItem.separator())
-
-        // 2. HiDPI NSSwitch Row
-        let hidpiRowView = PreferencesSwitchRow(
-            frame: NSRect(x: 0, y: 0, width: 220, height: 32),
-            title: "HiDPI Modes",
-            isOn: isHiDPIEnabled
-        ) { [weak self] enabled in
-            self?.isHiDPIEnabled = enabled
-        }
-        let hidpiRowItem = NSMenuItem()
-        hidpiRowItem.view = hidpiRowView
-        prefMenu.addItem(hidpiRowItem)
-
-        // 3. LoDPI NSSwitch Row
-        let lodpiRowView = PreferencesSwitchRow(
-            frame: NSRect(x: 0, y: 0, width: 220, height: 32),
-            title: "LoDPI Modes",
-            isOn: isLoDPIEnabled
-        ) { [weak self] enabled in
-            self?.isLoDPIEnabled = enabled
-        }
-        let lodpiRowItem = NSMenuItem()
-        lodpiRowItem.view = lodpiRowView
-        prefMenu.addItem(lodpiRowItem)
-
-        prefItem.submenu = prefMenu
-        menu.addItem(prefItem)
 
         let loginItem = NSMenuItem(title: "Open at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         loginItem.target = self
@@ -639,8 +635,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         Features:
         • Instant display resolution switching
-        • macOS Sonoma/Sequoia Control Center Capsule Slider
-        • Native macOS NSSwitch toggles for HiDPI & LoDPI
+        • macOS Control Center Capsule Slider
+        • 1-Click Top-Level NSSwitch controls for HiDPI & LoDPI
+        • List / Slider Segmented Control
         • Dynamic screen plug/unplug detection
         • Native macOS Menu Bar UI
         • Launch at Login support
