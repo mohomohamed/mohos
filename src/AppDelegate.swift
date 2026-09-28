@@ -194,6 +194,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
         menu.addItem(NSMenuItem.separator())
         addScreenshotAndStandardMenuItems(menuWidth: menuWidth)
+        menu.update()
     }
 
     private func addScreenshotAndStandardMenuItems(menuWidth: CGFloat) {

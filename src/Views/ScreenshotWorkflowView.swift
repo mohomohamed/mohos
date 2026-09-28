@@ -22,6 +22,13 @@ public final class ScreenshotWorkflowView: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: viewHeight))
         
         setupUI(width: width, isPermissionGranted: isPermissionGranted, onToggle: onToggle)
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(permissionDidChangeNotification),
+            name: .accessibilityPermissionDidChange,
+            object: nil
+        )
     }
     
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -66,23 +73,39 @@ public final class ScreenshotWorkflowView: NSView {
         
         self.onToggleClosure = onToggle
         
-        // Permission Missing Row
-        if !isPermissionGranted {
-            permissionNoticeView.frame = NSRect(x: 0, y: 0, width: containerW, height: 28)
-            
-            permissionLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-            permissionLabel.textColor = NSColor.systemOrange
-            permissionLabel.frame = NSRect(x: 12, y: 6, width: containerW - 130, height: 16)
-            permissionNoticeView.addSubview(permissionLabel)
-            
-            grantButton.bezelStyle = .inline
-            grantButton.font = NSFont.systemFont(ofSize: 10, weight: .bold)
-            grantButton.frame = NSRect(x: containerW - 120, y: 4, width: 110, height: 20)
-            grantButton.target = self
-            grantButton.action = #selector(grantPermissionClicked)
-            permissionNoticeView.addSubview(grantButton)
-            
-            addSubview(permissionNoticeView)
+        // Permission Missing Row (Always added, visibility toggled dynamically)
+        permissionNoticeView.frame = NSRect(x: 0, y: 0, width: containerW, height: 28)
+        permissionNoticeView.isHidden = isPermissionGranted
+        
+        permissionLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        permissionLabel.textColor = NSColor.systemOrange
+        permissionLabel.frame = NSRect(x: 12, y: 6, width: containerW - 130, height: 16)
+        permissionNoticeView.addSubview(permissionLabel)
+        
+        grantButton.bezelStyle = .inline
+        grantButton.font = NSFont.systemFont(ofSize: 10, weight: .bold)
+        grantButton.frame = NSRect(x: containerW - 120, y: 4, width: 110, height: 20)
+        grantButton.target = self
+        grantButton.action = #selector(grantPermissionClicked)
+        permissionNoticeView.addSubview(grantButton)
+        
+        addSubview(permissionNoticeView)
+    }
+    
+    private var onToggleClosure: ((Bool) -> Void)?
+    
+    @objc private func permissionDidChangeNotification() {
+        let isGranted = PermissionManager.shared.isAccessibilityGranted
+        permissionNoticeView.isHidden = isGranted
+        
+        let containerW = bounds.width > 0 ? bounds.width : (340 - 20)
+        titleLabel.frame = NSRect(x: 12, y: isGranted ? 22 : 48, width: containerW - 65, height: 16)
+        subtitleLabel.frame = NSRect(x: 12, y: isGranted ? 6 : 32, width: containerW - 65, height: 15)
+        
+        if #available(macOS 10.15, *), let sw = toggleSwitch as? NSSwitch {
+            sw.frame = NSRect(x: containerW - 48, y: isGranted ? (44 - 24) / 2 : (72 - 24) / 2 - 12, width: 38, height: 24)
+        } else if let btn = toggleSwitch as? NSButton {
+            btn.frame = NSRect(x: containerW - 30, y: isGranted ? (44 - 20) / 2 : (72 - 20) / 2 - 12, width: 20, height: 20)
         }
     }
     
