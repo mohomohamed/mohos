@@ -8,6 +8,7 @@
 
 import AppKit
 import Foundation
+import QuartzCore
 
 struct DisplayMode {
     let modeId: Int
@@ -24,104 +25,159 @@ struct DisplayInfo {
     let modes: [DisplayMode]
 }
 
-// MARK: - Modern macOS Resolution Slider Card
-class ModernSliderView: NSView {
-    let titleLabel: NSTextField
-    let modeBadge: NSTextField
-    let slider: NSSlider
-    let modes: [DisplayMode]
-    let screenId: String
+// MARK: - Modern macOS Control Center Capsule Slider View
+class ModernControlCenterSliderView: NSView {
+    var modes: [DisplayMode] = []
+    var screenId: String = ""
     weak var delegate: AppDelegate?
-
-    init(frame: NSRect, display: DisplayInfo, modes: [DisplayMode], delegate: AppDelegate) {
+    
+    private var currentIndex: Int = 0 {
+        didSet {
+            updateLayout()
+        }
+    }
+    
+    private let fillView = NSView()
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let detailLabel = NSTextField(labelWithString: "")
+    private let leftIconView = NSImageView()
+    
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupUI()
+    }
+    
+    convenience init(frame: NSRect, display: DisplayInfo, modes: [DisplayMode], delegate: AppDelegate) {
+        self.init(frame: frame)
+        configure(display: display, modes: modes, delegate: delegate)
+    }
+    
+    private func setupUI() {
+        wantsLayer = true
+        layer?.cornerRadius = 16
+        layer?.masksToBounds = true
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.08).cgColor
+        
+        // Control Center accent fill track
+        fillView.wantsLayer = true
+        fillView.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.35).cgColor
+        fillView.layer?.cornerRadius = 16
+        addSubview(fillView)
+        
+        // Left SF Symbol Icon
+        if #available(macOS 11.0, *) {
+            let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+            leftIconView.image = NSImage(systemSymbolName: "display", accessibilityDescription: nil)?.withSymbolConfiguration(config)
+            leftIconView.contentTintColor = NSColor.labelColor.withAlphaComponent(0.85)
+            addSubview(leftIconView)
+        }
+        
+        // Title Label (e.g. Built-in Display)
+        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .bold)
+        titleLabel.textColor = NSColor.labelColor
+        titleLabel.lineBreakMode = .byTruncatingTail
+        addSubview(titleLabel)
+        
+        // Resolution Detail Label (e.g. 1920×1080 HiDPI)
+        detailLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        detailLabel.textColor = NSColor.secondaryLabelColor
+        detailLabel.alignment = .right
+        addSubview(detailLabel)
+    }
+    
+    func configure(display: DisplayInfo, modes: [DisplayMode], delegate: AppDelegate) {
         self.modes = modes
         self.screenId = display.screenId
         self.delegate = delegate
+        self.titleLabel.stringValue = display.name
         
-        // Display Title (Icon + Name)
-        let tLabel = NSTextField(labelWithString: "📺  \(display.name)")
-        tLabel.font = NSFont.systemFont(ofSize: 12, weight: .bold)
-        tLabel.textColor = NSColor.labelColor
-        tLabel.frame = NSRect(x: 14, y: frame.height - 26, width: 140, height: 18)
-        self.titleLabel = tLabel
+        let initialIdx = modes.firstIndex(where: { $0.isCurrent }) ?? (modes.count - 1)
+        self.currentIndex = max(0, min(initialIdx, modes.count - 1))
+        updateLayout()
+    }
+    
+    override func layout() {
+        super.layout()
+        updateLayout()
+    }
+    
+    private func updateLayout() {
+        let w = bounds.width
+        let h = bounds.height
+        guard w > 0 && h > 0 else { return }
         
-        // Current Resolution Badge
-        let currentIdx = modes.firstIndex(where: { $0.isCurrent }) ?? 0
-        let initialText = modes.indices.contains(currentIdx) ? "\(modes[currentIdx].width)×\(modes[currentIdx].height) (\(modes[currentIdx].isScaled ? "HiDPI" : "LoDPI"))" : ""
+        let fraction = modes.count > 1 ? CGFloat(currentIndex) / CGFloat(modes.count - 1) : 1.0
+        let minFillWidth: CGFloat = 36.0
+        let fillWidth = max(minFillWidth, w * fraction)
         
-        let mBadge = NSTextField(labelWithString: initialText)
-        mBadge.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-        mBadge.textColor = NSColor.secondaryLabelColor
-        mBadge.alignment = .right
-        mBadge.frame = NSRect(x: frame.width - 154, y: frame.height - 26, width: 140, height: 18)
-        self.modeBadge = mBadge
-
-        // Modern Slider + SF Symbols
-        let maxVal = Double(max(0, modes.count - 1))
-        let sSlider = NSSlider(value: 0, minValue: 0, maxValue: maxVal, target: nil, action: nil)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        fillView.frame = NSRect(x: 0, y: 0, width: fillWidth, height: h)
+        CATransaction.commit()
         
-        if #available(macOS 11.0, *) {
-            sSlider.frame = NSRect(x: 36, y: 12, width: frame.width - 72, height: 20)
-        } else {
-            sSlider.frame = NSRect(x: 14, y: 12, width: frame.width - 28, height: 20)
+        leftIconView.frame = NSRect(x: 14, y: (h - 18) / 2, width: 18, height: 18)
+        titleLabel.frame = NSRect(x: 38, y: (h - 16) / 2, width: max(50, w - 210), height: 16)
+        
+        if currentIndex >= 0 && currentIndex < modes.count {
+            let m = modes[currentIndex]
+            let activeTag = m.isCurrent ? " • Active" : ""
+            detailLabel.stringValue = "\(m.width)×\(m.height) (\(m.isScaled ? "HiDPI" : "LoDPI"))\(activeTag)"
+        }
+        detailLabel.frame = NSRect(x: w - 160 - 14, y: (h - 16) / 2, width: 160, height: 16)
+    }
+    
+    private func updateFromLocation(_ point: CGPoint, isFinal: Bool) {
+        guard !modes.isEmpty else { return }
+        let fraction = max(0.0, min(1.0, point.x / bounds.width))
+        let targetIndex = Int(round(fraction * CGFloat(modes.count - 1)))
+        
+        if targetIndex != currentIndex {
+            currentIndex = targetIndex
         }
         
-        sSlider.numberOfTickMarks = max(2, modes.count)
-        sSlider.allowsTickMarkValuesOnly = true
-        sSlider.isContinuous = true
-        sSlider.integerValue = currentIdx
-        self.slider = sSlider
-
-        super.init(frame: frame)
-        
-        wantsLayer = true
-        layer?.cornerRadius = 10
-        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.06).cgColor
-        
-        addSubview(titleLabel)
-        addSubview(modeBadge)
-        
-        if #available(macOS 11.0, *) {
-            let lowIcon = NSImageView(frame: NSRect(x: 14, y: 14, width: 16, height: 16))
-            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
-            lowIcon.image = NSImage(systemSymbolName: "rectangle.compress.vertical", accessibilityDescription: nil)?.withSymbolConfiguration(config)
-            lowIcon.contentTintColor = NSColor.tertiaryLabelColor
-            addSubview(lowIcon)
-            
-            let highIcon = NSImageView(frame: NSRect(x: frame.width - 30, y: 14, width: 16, height: 16))
-            highIcon.image = NSImage(systemSymbolName: "rectangle.expand.vertical", accessibilityDescription: nil)?.withSymbolConfiguration(config)
-            highIcon.contentTintColor = NSColor.tertiaryLabelColor
-            addSubview(highIcon)
-        }
-        
-        slider.target = self
-        slider.action = #selector(sliderChanged(_:))
-        
-        addSubview(slider)
-        updateBadge(for: currentIdx)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    func updateBadge(for index: Int) {
-        guard index >= 0 && index < modes.count else { return }
-        let m = modes[index]
-        let currentTag = m.isCurrent ? " • Active" : ""
-        modeBadge.stringValue = "\(m.width) × \(m.height) (\(m.isScaled ? "HiDPI" : "LoDPI"))\(currentTag)"
-    }
-
-    @objc func sliderChanged(_ sender: NSSlider) {
-        let idx = sender.integerValue
-        updateBadge(for: idx)
-        
-        if let event = NSApp.currentEvent, event.type == .leftMouseUp {
-            guard idx >= 0 && idx < modes.count else { return }
-            let mode = modes[idx]
-            if !mode.isCurrent {
-                delegate?.applyMode(screenId: screenId, modeId: mode.modeId)
+        if isFinal {
+            let m = modes[currentIndex]
+            if !m.isCurrent {
+                delegate?.applyMode(screenId: screenId, modeId: m.modeId)
             }
         }
     }
+    
+    override func mouseDown(with event: NSEvent) {
+        let loc = convert(event.locationInWindow, from: nil)
+        updateFromLocation(loc, isFinal: false)
+    }
+    
+    override func mouseDragged(with event: NSEvent) {
+        let loc = convert(event.locationInWindow, from: nil)
+        updateFromLocation(loc, isFinal: false)
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        let loc = convert(event.locationInWindow, from: nil)
+        updateFromLocation(loc, isFinal: true)
+    }
+}
+
+// MARK: - Slider Menu Item Container (Padding Wrapper)
+class SliderContainerItemView: NSView {
+    init(display: DisplayInfo, modes: [DisplayMode], delegate: AppDelegate) {
+        super.init(frame: NSRect(x: 0, y: 0, width: 320, height: 54))
+        
+        let slider = ModernControlCenterSliderView(
+            frame: NSRect(x: 10, y: 5, width: 300, height: 44),
+            display: display,
+            modes: modes,
+            delegate: delegate
+        )
+        addSubview(slider)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 // MARK: - Modern macOS NSSwitch Preference Row
@@ -391,16 +447,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
                 
                 if isSliderViewEnabled {
-                    // Modern Slider Card View (lower res at left, higher res at right)
+                    // Modern macOS Control Center Capsule Slider View
                     let sliderModes = Array(uniqueModes.reversed())
-                    let sliderView = ModernSliderView(
-                        frame: NSRect(x: 0, y: 0, width: 280, height: 60),
+                    let containerView = SliderContainerItemView(
                         display: display,
                         modes: sliderModes,
                         delegate: self
                     )
                     let containerItem = NSMenuItem()
-                    containerItem.view = sliderView
+                    containerItem.view = containerView
                     menu.addItem(containerItem)
                 } else {
                     // List View Mode
@@ -584,7 +639,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         Features:
         • Instant display resolution switching
-        • Modern macOS Slider Card UI
+        • macOS Sonoma/Sequoia Control Center Capsule Slider
         • Native macOS NSSwitch toggles for HiDPI & LoDPI
         • Dynamic screen plug/unplug detection
         • Native macOS Menu Bar UI
