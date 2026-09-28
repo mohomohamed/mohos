@@ -229,21 +229,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     }
                 }
                 
-                for mode in uniqueModes {
-                    var title = "\(mode.width) × \(mode.height)"
-                    if mode.isScaled {
-                        title += " (HiDPI)"
-                    } else {
-                        title += " (LoDPI)"
+                let hiDpiModes = uniqueModes.filter { $0.isScaled }
+                let loDpiModes = uniqueModes.filter { !$0.isScaled }
+                
+                if !hiDpiModes.isEmpty {
+                    for mode in hiDpiModes {
+                        let title = "    \(mode.width) × \(mode.height) (HiDPI)"
+                        let item = NSMenuItem(title: title, action: #selector(selectMode(_:)), keyEquivalent: "")
+                        item.target = self
+                        item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
+                        if mode.isCurrent {
+                            item.state = .on
+                        }
+                        menu.addItem(item)
                     }
-                    
-                    let item = NSMenuItem(title: "    " + title, action: #selector(selectMode(_:)), keyEquivalent: "")
-                    item.target = self
-                    item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
-                    if mode.isCurrent {
-                        item.state = .on
+                }
+                
+                if !hiDpiModes.isEmpty && !loDpiModes.isEmpty {
+                    menu.addItem(NSMenuItem.separator())
+                }
+                
+                if !loDpiModes.isEmpty {
+                    for mode in loDpiModes {
+                        let title = "    \(mode.width) × \(mode.height) (LoDPI)"
+                        let item = NSMenuItem(title: title, action: #selector(selectMode(_:)), keyEquivalent: "")
+                        item.target = self
+                        item.representedObject = ["screenId": display.screenId, "modeId": mode.modeId] as [String: Any]
+                        if mode.isCurrent {
+                            item.state = .on
+                        }
+                        menu.addItem(item)
                     }
-                    menu.addItem(item)
                 }
             }
         }
