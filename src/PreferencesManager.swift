@@ -15,6 +15,9 @@ public final class PreferencesManager {
         static let clipboardScreenshot = "IsClipboardScreenshotEnabled"
         static let viewMode = "ViewMode"
         static let displayFilterMode = "DisplayFilterMode"
+        static let dnsProfile = "DNSProfile"
+        static let customPrimaryDNS = "CustomPrimaryDNS"
+        static let customSecondaryDNS = "CustomSecondaryDNS"
     }
     
     private init() {}
@@ -53,6 +56,37 @@ public final class PreferencesManager {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: Keys.displayFilterMode)
+            NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+        }
+    }
+    
+    public var dnsProfile: DNSProfile {
+        get {
+            let raw = UserDefaults.standard.integer(forKey: Keys.dnsProfile)
+            return DNSProfile(rawValue: raw) ?? .defaultDHCP
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: Keys.dnsProfile)
+            NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+        }
+    }
+    
+    public var customPrimaryDNS: String {
+        get {
+            return UserDefaults.standard.string(forKey: Keys.customPrimaryDNS) ?? "1.1.1.1"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Keys.customPrimaryDNS)
+            NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+        }
+    }
+    
+    public var customSecondaryDNS: String {
+        get {
+            return UserDefaults.standard.string(forKey: Keys.customSecondaryDNS) ?? "1.0.0.1"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Keys.customSecondaryDNS)
             NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
         }
     }

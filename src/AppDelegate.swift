@@ -198,6 +198,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     }
 
     private func addScreenshotAndStandardMenuItems(menuWidth: CGFloat) {
+        // DNS Shield Card
+        let dnsContainer = DNSProtectionContainerItemView(width: menuWidth)
+        let dnsItem = NSMenuItem()
+        dnsItem.view = dnsContainer
+        menu.addItem(dnsItem)
+
         // Screenshot Workflow Card
         let screenshotContainer = ScreenshotWorkflowContainerItemView(
             width: menuWidth,

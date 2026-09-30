@@ -14,6 +14,9 @@ public struct SettingsView: View {
     @State private var isClipboardScreenshot: Bool = PreferencesManager.shared.isClipboardScreenshotEnabled
     @State private var viewModeRaw: Int = PreferencesManager.shared.viewMode.rawValue
     @State private var filterModeRaw: Int = PreferencesManager.shared.displayFilterMode.rawValue
+    @State private var selectedDNSProfileRaw: Int = PreferencesManager.shared.dnsProfile.rawValue
+    @State private var customPrimaryDNS: String = PreferencesManager.shared.customPrimaryDNS
+    @State private var customSecondaryDNS: String = PreferencesManager.shared.customSecondaryDNS
     @State private var isAccessibilityGranted: Bool = PermissionManager.shared.isAccessibilityGranted
     @State private var copiedDiagnostics: Bool = false
     
@@ -90,7 +93,48 @@ public struct SettingsView: View {
                 Label("Screenshots", systemImage: "camera")
             }
             
-            // MARK: - Tab 3: Diagnostics
+            // MARK: - Tab 3: DNS Shield (Ad & Popup Blocker)
+            Form {
+                Section(header: Text("Ad-Blocking & Privacy DNS Protection")) {
+                    Picker("DNS Provider", selection: $selectedDNSProfileRaw) {
+                        ForEach(DNSProfile.allCases) { profile in
+                            Text(profile.displayName).tag(profile.rawValue)
+                        }
+                    }
+                    .onChange(of: selectedDNSProfileRaw) { newValue in
+                        if let profile = DNSProfile(rawValue: newValue) {
+                            DNSManager.shared.applyProfile(profile)
+                        }
+                    }
+                    
+                    if selectedDNSProfileRaw == DNSProfile.custom.rawValue {
+                        TextField("Primary DNS IP", text: $customPrimaryDNS)
+                            .onSubmit {
+                                PreferencesManager.shared.customPrimaryDNS = customPrimaryDNS
+                                DNSManager.shared.applyProfile(.custom)
+                            }
+                        TextField("Secondary DNS IP", text: $customSecondaryDNS)
+                            .onSubmit {
+                                PreferencesManager.shared.customSecondaryDNS = customSecondaryDNS
+                                DNSManager.shared.applyProfile(.custom)
+                            }
+                    }
+                    
+                    HStack {
+                        Text("Protection Details:")
+                        Spacer()
+                        Text(DNSProfile(rawValue: selectedDNSProfileRaw)?.subtitle ?? "")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+            }
+            .padding(20)
+            .tabItem {
+                Label("DNS Shield", systemImage: "shield.checkerboard")
+            }
+            
+            // MARK: - Tab 4: Diagnostics
             Form {
                 Section(header: Text("System & Diagnostics")) {
                     HStack {
@@ -119,7 +163,7 @@ public struct SettingsView: View {
                 Label("Diagnostics", systemImage: "waveform.path.ecg")
             }
             
-            // MARK: - Tab 4: About
+            // MARK: - Tab 5: About
             VStack(spacing: 12) {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
@@ -133,7 +177,7 @@ public struct SettingsView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                Text("Lightweight native macOS utility for display management and zero-file clipboard screenshots.")
+                Text("Lightweight native macOS utility for display management, zero-file clipboard screenshots, and DNS ad-blocking.")
                     .font(.footnote)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
@@ -147,9 +191,12 @@ public struct SettingsView: View {
                 Label("About", systemImage: "info.circle")
             }
         }
-        .frame(width: 480, height: 260)
+        .frame(width: 490, height: 280)
         .onReceive(NotificationCenter.default.publisher(for: .accessibilityPermissionDidChange)) { _ in
             self.isAccessibilityGranted = PermissionManager.shared.isAccessibilityGranted
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dnsProfileDidChange)) { _ in
+            self.selectedDNSProfileRaw = PreferencesManager.shared.dnsProfile.rawValue
         }
     }
     

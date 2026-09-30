@@ -33,7 +33,12 @@ Designed specifically for modern AI workflows (ChatGPT, Claude, Gemini, Cursor) 
 - **1-Click Segmented Controls**: Quickly filter `[ All | HiDPI | LoDPI ]` and toggle between `[ List | Slider ]` views.
 - **Dynamic Screen Detection**: Automatically updates when external monitors are plugged in or disconnected (`didChangeScreenParametersNotification`).
 
-### 3. ⚡ Ultra-Lightweight & Native
+### 3. 🛡️ System-Wide DNS Shield (Ad & Popup Blocker)
+- **1-Click Ad & Tracker Blocking**: Select privacy DNS providers like **AdGuard DNS** (`94.140.14.14`), **Cloudflare Security** (`1.1.1.2`), **Quad9**, or **Custom DNS** to block ads, malicious popups, and trackers system-wide across all web browsers and applications.
+- **Native `networksetup` Engine**: Uses macOS native network tools to update DNS configurations for active network interfaces (`Wi-Fi`, `Ethernet`) without third-party daemons or helper apps.
+- **Dynamic Popup Switcher**: Includes an `NSPopUpButton` directly in the menu bar popover and a dedicated **DNS Shield** tab in Settings (`⌘,`).
+
+### 4. ⚡ Ultra-Lightweight & Native
 - **Zero Idle CPU Footprint**: Built with pure Swift and AppKit. Event tap sleeps naturally with 0.0% CPU overhead when idle.
 - **No Electron**: No web views, no heavy Node runtime, no memory bloat.
 
