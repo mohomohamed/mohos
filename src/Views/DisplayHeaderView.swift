@@ -1,6 +1,6 @@
 //
 //  DisplayHeaderView.swift
-//  DisplayMenu
+//  mohos
 //
 //  Created & Developed by Mohamed Moho
 //  Copyright © 2026 Mohamed Moho. All rights reserved.
@@ -11,7 +11,8 @@ import AppKit
 public final class DisplayHeaderView: NSView {
     private let iconView = NSImageView()
     private let nameLabel = NSTextField(labelWithString: "")
-    private let statusLabel = NSTextField(labelWithString: "")
+    private let statusDot = NSTextField(labelWithString: "●")
+    private let resolutionLabel = NSTextField(labelWithString: "")
     
     public init(frame: NSRect, display: DisplayInfo) {
         super.init(frame: frame)
@@ -32,41 +33,48 @@ public final class DisplayHeaderView: NSView {
         
         // SF Symbol Monitor Icon
         if #available(macOS 11.0, *) {
-            let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+            let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
             iconView.image = NSImage(systemSymbolName: "display", accessibilityDescription: nil)?.withSymbolConfiguration(config)
             iconView.contentTintColor = NSColor.controlAccentColor
         }
-        iconView.frame = NSRect(x: 12, y: (h - 22) / 2, width: 22, height: 22)
+        iconView.frame = NSRect(x: 10, y: (h - 20) / 2, width: 20, height: 20)
         addSubview(iconView)
         
         // Display Name Label
         nameLabel.stringValue = display.name
-        nameLabel.font = NSFont.systemFont(ofSize: 13, weight: .bold)
+        nameLabel.font = NSFont.systemFont(ofSize: 12, weight: .bold)
         nameLabel.textColor = NSColor.labelColor
         nameLabel.lineBreakMode = .byTruncatingTail
-        nameLabel.frame = NSRect(x: 42, y: h / 2 + 1, width: w - 54, height: 17)
+        nameLabel.frame = NSRect(x: 36, y: h / 2 + 1, width: w - 75, height: 16)
         addSubview(nameLabel)
         
-        // Active Resolution Status (e.g., "1280 × 720 · Active")
+        // Subtle Active Status Dot
+        statusDot.font = NSFont.systemFont(ofSize: 9, weight: .bold)
+        statusDot.textColor = NSColor.systemGreen
+        statusDot.alignment = .right
+        statusDot.frame = NSRect(x: w - 30, y: h / 2 + 1, width: 18, height: 16)
+        addSubview(statusDot)
+        
+        // Active Resolution Subtitle (e.g. "1440 × 900 · LoDPI")
         if let currentMode = display.currentMode {
             let modeType = currentMode.isScaled ? "HiDPI" : "LoDPI"
-            statusLabel.stringValue = "\(currentMode.width) × \(currentMode.height) (\(modeType)) · Active"
+            resolutionLabel.stringValue = "\(currentMode.width) × \(currentMode.height) · \(modeType)"
         } else {
-            statusLabel.stringValue = "Connected"
+            resolutionLabel.stringValue = "Connected"
         }
-        statusLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        statusLabel.textColor = NSColor.secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
-        statusLabel.frame = NSRect(x: 42, y: h / 2 - 16, width: w - 54, height: 15)
-        addSubview(statusLabel)
+        resolutionLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        resolutionLabel.textColor = NSColor.secondaryLabelColor
+        resolutionLabel.lineBreakMode = .byTruncatingTail
+        resolutionLabel.frame = NSRect(x: 36, y: h / 2 - 15, width: w - 46, height: 14)
+        addSubview(resolutionLabel)
     }
 }
 
 public final class DisplayHeaderContainerItemView: NSView {
-    public init(display: DisplayInfo, width: CGFloat = 320) {
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 50))
+    public init(display: DisplayInfo, width: CGFloat = 340) {
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 46))
         let header = DisplayHeaderView(
-            frame: NSRect(x: 10, y: 4, width: width - 20, height: 42),
+            frame: NSRect(x: 10, y: 3, width: width - 20, height: 40),
             display: display
         )
         addSubview(header)

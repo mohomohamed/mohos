@@ -13,10 +13,9 @@ public final class DNSProtectionView: NSView {
     private let titleLabel = NSTextField(labelWithString: "DNS Shield")
     private let subtitleLabel = NSTextField(labelWithString: "")
     private var toggleSwitch: NSControl?
-    private let chooseButton = NSButton(title: "Provider ▸", target: nil, action: nil)
     
     public init(width: CGFloat = 340) {
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 46))
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 42))
         setupUI(width: width)
         
         NotificationCenter.default.addObserver(
@@ -38,7 +37,7 @@ public final class DNSProtectionView: NSView {
         
         // SF Symbol Shield Icon
         if #available(macOS 11.0, *) {
-            let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
             iconView.image = NSImage(systemSymbolName: "shield.checkerboard", accessibilityDescription: nil)?.withSymbolConfiguration(config)
             iconView.contentTintColor = NSColor.controlAccentColor
         }
@@ -48,23 +47,15 @@ public final class DNSProtectionView: NSView {
         // Title Label
         titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .bold)
         titleLabel.textColor = NSColor.labelColor
-        titleLabel.frame = NSRect(x: 36, y: 20, width: containerW - 170, height: 16)
+        titleLabel.frame = NSRect(x: 36, y: 20, width: containerW - 90, height: 16)
         addSubview(titleLabel)
         
-        // Subtitle Label
+        // Subtitle Label (e.g. "AdGuard DNS" or "Off · DHCP")
         subtitleLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
         subtitleLabel.textColor = NSColor.secondaryLabelColor
         subtitleLabel.lineBreakMode = .byTruncatingTail
-        subtitleLabel.frame = NSRect(x: 36, y: 4, width: containerW - 170, height: 15)
+        subtitleLabel.frame = NSRect(x: 36, y: 4, width: containerW - 90, height: 15)
         addSubview(subtitleLabel)
-        
-        // Provider Details Button
-        chooseButton.bezelStyle = .inline
-        chooseButton.font = NSFont.systemFont(ofSize: 10, weight: .bold)
-        chooseButton.frame = NSRect(x: containerW - 135, y: 10, width: 75, height: 20)
-        chooseButton.target = self
-        chooseButton.action = #selector(openDNSSettings)
-        addSubview(chooseButton)
         
         // NSSwitch Toggle
         let currentProfile = PreferencesManager.shared.dnsProfile
@@ -100,9 +91,9 @@ public final class DNSProtectionView: NSView {
         }
         
         if currentProfile == .defaultDHCP {
-            subtitleLabel.stringValue = "Off · Router/ISP Defaults"
+            subtitleLabel.stringValue = "Off · Router Defaults"
         } else {
-            subtitleLabel.stringValue = "\(currentProfile.shortName) · Active"
+            subtitleLabel.stringValue = currentProfile.shortName
         }
     }
     
@@ -128,10 +119,6 @@ public final class DNSProtectionView: NSView {
         }
     }
     
-    @objc private func openDNSSettings() {
-        SettingsWindowManager.shared.showSettings()
-    }
-    
     @objc private func dnsProfileChanged() {
         updateUI()
     }
@@ -139,9 +126,9 @@ public final class DNSProtectionView: NSView {
 
 public final class DNSProtectionContainerItemView: NSView {
     public init(width: CGFloat = 340) {
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 50))
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 46))
         let card = DNSProtectionView(width: width)
-        card.frame = NSRect(x: 10, y: 3, width: width - 20, height: 44)
+        card.frame = NSRect(x: 10, y: 3, width: width - 20, height: 40)
         addSubview(card)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
