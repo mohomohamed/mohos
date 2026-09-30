@@ -40,18 +40,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(refreshMenu),
-            name: .preferencesDidChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(refreshMenu),
-            name: .accessibilityPermissionDidChange,
-            object: nil
-        )
 
         // Start Screenshot Shortcut Interceptor
         ScreenshotShortcutManager.shared.start()
