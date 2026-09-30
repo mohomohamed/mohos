@@ -160,16 +160,39 @@ public final class DisplayManager: DisplayEngine {
     
     public func applyMode(screenId: String, modeId: Int, completion: ((Result<Void, DisplayEngineError>) -> Void)? = nil) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let command = "id:\(screenId) mode:\(modeId)"
-            if let result = self?.runDisplayPlacer(args: [command]), !result.isEmpty {
-                Log.display.info("Successfully applied mode \(modeId) for screen \(screenId, privacy: .public)")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    completion?(.success(()))
-                }
-            } else {
-                Log.display.error("Failed to apply mode \(modeId) for screen \(screenId, privacy: .public)")
+            guard let self = self, self.isEngineAvailable() else {
                 DispatchQueue.main.async {
-                    completion?(.failure(.commandFailed(output: "Could not apply resolution")))
+                    completion?(.failure(.engineNotFound))
+                }
+                return
+            }
+            
+            let command = "id:\(screenId) mode:\(modeId)"
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: self.displayplacerPath)
+            task.arguments = [command]
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = pipe
+            
+            do {
+                try task.run()
+                task.waitUntilExit()
+                if task.terminationStatus == 0 {
+                    Log.display.info("Successfully applied mode \(modeId) for screen \(screenId, privacy: .public)")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        completion?(.success(()))
+                    }
+                } else {
+                    Log.display.error("Failed to apply mode \(modeId) for screen \(screenId, privacy: .public)")
+                    DispatchQueue.main.async {
+                        completion?(.failure(.commandFailed(output: "Could not apply resolution")))
+                    }
+                }
+            } catch {
+                Log.display.error("Error applying mode: \(error.localizedDescription, privacy: .public)")
+                DispatchQueue.main.async {
+                    completion?(.failure(.commandFailed(output: error.localizedDescription)))
                 }
             }
         }
