@@ -29,6 +29,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
 
         menu = NSMenu()
+        menu.autoenablesItems = false
         menu.delegate = self
         statusItem.menu = menu
 
@@ -246,11 +247,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(quitItem)
     }
 
-    @objc private func openSettings() {
+    @objc public func openSettings() {
         SettingsWindowManager.shared.showSettings()
     }
 
-    @objc private func selectMode(_ sender: NSMenuItem) {
+    @objc public func selectMode(_ sender: NSMenuItem) {
         guard let dict = sender.representedObject as? [String: Any],
               let screenId = dict["screenId"] as? String,
               let modeId = dict["modeId"] as? Int else { return }
@@ -260,7 +261,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
     }
 
-    @objc private func toggleLaunchAtLogin() {
+    @objc public func toggleLaunchAtLogin() {
         LoginItemManager.shared.isEnabled = !LoginItemManager.shared.isEnabled
         refreshMenu()
     }
