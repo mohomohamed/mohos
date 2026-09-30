@@ -12,7 +12,8 @@ public final class DNSProtectionView: NSView {
     private let iconView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "DNS Shield")
     private let subtitleLabel = NSTextField(labelWithString: "")
-    private let popUpButton = NSPopUpButton()
+    private var toggleSwitch: NSControl?
+    private let chooseButton = NSButton(title: "Provider ▸", target: nil, action: nil)
     
     public init(width: CGFloat = 340) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 46))
@@ -57,25 +58,46 @@ public final class DNSProtectionView: NSView {
         subtitleLabel.frame = NSRect(x: 36, y: 4, width: containerW - 170, height: 15)
         addSubview(subtitleLabel)
         
-        // NSPopUpButton for 1-click DNS profile selection
-        popUpButton.bezelStyle = .rounded
-        popUpButton.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        popUpButton.frame = NSRect(x: containerW - 135, y: 8, width: 130, height: 24)
+        // Provider Details Button
+        chooseButton.bezelStyle = .inline
+        chooseButton.font = NSFont.systemFont(ofSize: 10, weight: .bold)
+        chooseButton.frame = NSRect(x: containerW - 135, y: 10, width: 75, height: 20)
+        chooseButton.target = self
+        chooseButton.action = #selector(openDNSSettings)
+        addSubview(chooseButton)
         
-        for profile in DNSProfile.allCases {
-            popUpButton.addItem(withTitle: profile.shortName)
+        // NSSwitch Toggle
+        let currentProfile = PreferencesManager.shared.dnsProfile
+        let isEnabled = (currentProfile != .defaultDHCP)
+        if #available(macOS 10.15, *) {
+            let sw = NSSwitch(frame: NSRect(x: containerW - 48, y: (40 - 24) / 2, width: 38, height: 24))
+            sw.state = isEnabled ? .on : .off
+            sw.target = self
+            sw.action = #selector(switchToggled(_:))
+            toggleSwitch = sw
+            addSubview(sw)
+        } else {
+            let btn = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+            btn.state = isEnabled ? .on : .off
+            btn.frame = NSRect(x: containerW - 30, y: (40 - 20) / 2, width: 20, height: 20)
+            btn.target = self
+            btn.action = #selector(switchToggled(_:))
+            toggleSwitch = btn
+            addSubview(btn)
         }
-        
-        popUpButton.target = self
-        popUpButton.action = #selector(popUpSelectionChanged(_:))
-        addSubview(popUpButton)
         
         updateUI()
     }
     
     private func updateUI() {
         let currentProfile = PreferencesManager.shared.dnsProfile
-        popUpButton.selectItem(at: currentProfile.rawValue)
+        let isEnabled = (currentProfile != .defaultDHCP)
+        
+        if #available(macOS 10.15, *), let sw = toggleSwitch as? NSSwitch {
+            sw.state = isEnabled ? .on : .off
+        } else if let btn = toggleSwitch as? NSButton {
+            btn.state = isEnabled ? .on : .off
+        }
         
         if currentProfile == .defaultDHCP {
             subtitleLabel.stringValue = "Off · Router/ISP Defaults"
@@ -84,13 +106,30 @@ public final class DNSProtectionView: NSView {
         }
     }
     
-    @objc private func popUpSelectionChanged(_ sender: NSPopUpButton) {
-        let selectedIdx = sender.indexOfSelectedItem
-        if let profile = DNSProfile(rawValue: selectedIdx) {
-            DNSManager.shared.applyProfile(profile) { _ in
+    @objc private func switchToggled(_ sender: Any) {
+        let isOn: Bool
+        if #available(macOS 10.15, *), let sw = sender as? NSSwitch {
+            isOn = (sw.state == .on)
+        } else if let btn = sender as? NSButton {
+            isOn = (btn.state == .on)
+        } else {
+            return
+        }
+        
+        if isOn {
+            let targetProfile: DNSProfile = (PreferencesManager.shared.dnsProfile == .defaultDHCP) ? .adGuard : PreferencesManager.shared.dnsProfile
+            DNSManager.shared.applyProfile(targetProfile) { _ in
+                self.updateUI()
+            }
+        } else {
+            DNSManager.shared.applyProfile(.defaultDHCP) { _ in
                 self.updateUI()
             }
         }
+    }
+    
+    @objc private func openDNSSettings() {
+        SettingsWindowManager.shared.showSettings()
     }
     
     @objc private func dnsProfileChanged() {

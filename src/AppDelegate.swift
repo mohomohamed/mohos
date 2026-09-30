@@ -205,6 +205,24 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         dnsItem.view = dnsContainer
         menu.addItem(dnsItem)
 
+        // Native DNS Provider Submenu
+        let currentProfile = PreferencesManager.shared.dnsProfile
+        let dnsSubmenuItem = NSMenuItem(title: "    DNS Provider (\(currentProfile.shortName))", action: nil, keyEquivalent: "")
+        let dnsSubmenu = NSMenu()
+        dnsSubmenu.autoenablesItems = false
+        
+        for profile in DNSProfile.allCases {
+            let item = NSMenuItem(title: profile.displayName, action: #selector(selectDNSProfile(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = profile.rawValue
+            if profile == currentProfile {
+                item.state = .on
+            }
+            dnsSubmenu.addItem(item)
+        }
+        dnsSubmenuItem.submenu = dnsSubmenu
+        menu.addItem(dnsSubmenuItem)
+
         // Screenshot Workflow Card
         let screenshotContainer = ScreenshotWorkflowContainerItemView(
             width: menuWidth,
@@ -258,6 +276,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         
         DisplayManager.shared.applyMode(screenId: screenId, modeId: modeId) { [weak self] _ in
             self?.refreshMenu()
+        }
+    }
+
+    @objc public func selectDNSProfile(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? Int,
+              let profile = DNSProfile(rawValue: rawValue) else { return }
+        
+        if profile == .custom && (PreferencesManager.shared.customPrimaryDNS.isEmpty || PreferencesManager.shared.customPrimaryDNS == "1.1.1.1") {
+            SettingsWindowManager.shared.showSettings()
+        } else {
+            DNSManager.shared.applyProfile(profile) { [weak self] _ in
+                self?.refreshMenu()
+            }
         }
     }
 
